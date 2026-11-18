@@ -14,6 +14,16 @@ android {
         versionCode = 10
         versionName = "2.7.0"
     }
+    // Build fix only (no app-code change): AGP compiles Java to 1.8 by
+    // default while the Kotlin plugin targets 17, and the build refuses
+    // the mismatch. Pin both to 17.
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
     buildFeatures { compose = true }
 }
 
