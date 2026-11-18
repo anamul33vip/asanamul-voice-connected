@@ -1,5 +1,6 @@
 package com.anamul.voice
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -45,12 +46,17 @@ class MainActivity : ComponentActivity() {
     val scope = rememberCoroutineScope()
     var page by remember { mutableStateOf("Home") }
     var text by remember { mutableStateOf("") }
-    var key by remember { mutableStateOf("") }
+    // FIX (v2.7.1): remember the access key on the phone so it is still
+    // there after the app is closed and reopened.
+    val prefs = context.getSharedPreferences("voice_prefs", Context.MODE_PRIVATE)
+    var key by remember { mutableStateOf(prefs.getString("access_key", "") ?: "") }
     var status by remember { mutableStateOf("Not connected") }
     var voices by remember { mutableStateOf(listOf<Voice>()) }
     var selectedVoice by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var overlayOn by remember { mutableStateOf(false) }
+    // FIX (v2.7.1): verify the saved key automatically when the app opens.
+    LaunchedEffect(Unit) { if (key.isNotBlank()) { busy=true; status="Checking saved key…"; status=runCatching { ApiClient.verify(key) }.fold({if(it) "Key verified" else "Key rejected"},{"Backend not configured / unavailable"}); busy=false } }
     val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) { status = "Selected audio: ${uri.lastPathSegment ?: "file"}" }
     }
@@ -67,7 +73,7 @@ class MainActivity : ComponentActivity() {
                 } }
                 when(page) {
                     "Home" -> {
-                        item { Section("Connection") { Text(status,color=Color.LightGray); OutlinedTextField(value=key,onValueChange={key=it},label={Text("Access Key")},singleLine=true,modifier=Modifier.fillMaxWidth()); Button(onClick={scope.launch { busy=true; status=runCatching { ApiClient.verify(key) }.fold({if(it) "Key verified" else "Key rejected"},{"Backend not configured / unavailable"}); busy=false }},enabled=!busy) { Text(if(busy) "Checking…" else "Connect / Verify Key") } } }
+                        item { Section("Connection") { Text(status,color=Color.LightGray); OutlinedTextField(value=key,onValueChange={key=it},label={Text("Access Key")},singleLine=true,modifier=Modifier.fillMaxWidth()); Button(onClick={scope.launch { busy=true; status=runCatching { ApiClient.verify(key) }.fold({ if(it) { prefs.edit().putString("access_key", key).apply(); "Key verified" } else "Key rejected" },{"Backend not configured / unavailable"}); busy=false }},enabled=!busy) { Text(if(busy) "Checking…" else "Connect / Verify Key") } } }
                         item { Section("Quick Actions") { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { OutlinedButton(onClick={page="Voices"}){Text("Voice Library")}; OutlinedButton(onClick={page="Text to Voice"}){Text("Generate Voice")} } } }
                         item { Section("Floating Overlay") { Text("Overlay controls this app's playback and status. Third-party game microphone routing is device/app dependent.",color=Color.LightGray); Button(onClick={
                             if (!Settings.canDrawOverlays(context)) context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
