@@ -11,8 +11,8 @@ android {
         applicationId = "com.anamul.voice"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "2.7.0"
+        versionCode = 11
+        versionName = "2.7.1"
     }
     // Build fix only (no app-code change): AGP compiles Java to 1.8 by
     // default while the Kotlin plugin targets 17, and the build refuses
